@@ -21,7 +21,7 @@ Démarrage rapide
      `python3 -m http.server 5173`
 
 2) Ouvrir les jeux dans le navigateur
-   - Voxel Clans (3D): `http://localhost:5173/`
+   - Voxel Clans (3D): `http://localhost:5173/` (ne fonctionne pas)
    - Mario‑Clans (2D): `http://localhost:5173/mario-clans/`
 
 3) Lancer Snake (optionnel)
