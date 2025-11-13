@@ -1,0 +1,120 @@
+// Jeu de plateforme 2D type Mario, avec zones de capture de clans
+
+export function createGame({ width, height, onStatus }) {
+  const TS = 24; // taille de tuile
+  const SCALE = 2; // zoom de rendu pour lisibilité
+  const G = 800; // gravité px/s^2
+  const MAX_VY = 900;
+  const WORLD_W = 96; // en tuiles (garde en synchro avec W)
+  let time = 0; // temps global pour jour/nuit & vent
+
+  // Monde: grille (0 vide, 1 sol, 2 plateforme)
+  const W = 96, H = 24;
+  const level = new Uint8Array(W * H);
+  const idx = (x,y)=> x + y*W;
+  function setRect(x0,y0,x1,y1,val){ for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) level[idx(x,y)]=val; }
+
+  // Sol de base
+  setRect(0, H-3, W-1, H-1, 1);
+  // Petites plateformes
+  // Plateformes abaissées pour être atteignables plus facilement
+  for (let x=8; x<20; x++) level[idx(x, H-6)] = 2;   // était H-8
+  for (let x=28; x<35; x++) level[idx(x, H-9)] = 2;  // était H-12
+  for (let x=45; x<55; x++) level[idx(x, H-8)] = 2;  // était H-10
+  for (let x=65; x<75; x++) level[idx(x, H-5)] = 2;  // était H-7
+
+  // Grottes: cavités cachées sous terre (crée des murs/sols)
+  // Grotte centrale
+  setRect(48, H-12, 62, H-11, 2); // toit
+  setRect(48, H-8, 62, H-7, 2);   // sol
+  setRect(48, H-12, 49, H-7, 2);  // mur gauche
+  setRect(61, H-12, 62, H-7, 2);  // mur droit
+  setRect(49, H-10, 49, H-9, 0);  // petite entrée
+  // Grotte droite
+  setRect(78, H-11, 90, H-10, 2);
+  setRect(78, H-7, 90, H-6, 2);
+  setRect(78, H-11, 79, H-6, 2);
+  setRect(89, H-11, 90, H-6, 2);
+  setRect(79, H-9, 79, H-8, 0);
+
+  // Bases/clans: il faut toutes les capturer pour gagner
+  const bases = [
+    { x: 2, y: H-6, w: 8, h: 3, color: '#58a14f', name: 'Clan Joueur', progress: 1, locked: true, hidden: false },
+    { x: W-10, y: H-6, w: 8, h: 3, color: '#caa574', name: 'Clan Bois', progress: 0, locked: false, hidden: false },
+    { x: 54, y: H-9, w: 6, h: 3, color: '#8d99ae', name: 'Clan Souterrain', progress: 0, locked: false, hidden: true },
+    { x: 80, y: H-8, w: 6, h: 3, color: '#7a5d3d', name: 'Clan Terre', progress: 0, locked: false, hidden: true },
+  ];
+
+  // Joueur
+  const player = { x: (bases[0].x+bases[0].w/2)*TS, y: (bases[0].y-1)*TS, w: 18, h: 22,
+    vx:0, vy:0, onGround:false, dir:1, lives:3, skin: 0,
+    attack: { active:false, time:0, cooldown:0 },
+    shield: 0, inv: 0
+  };
+
+  // Ennemis simples (marche gauche/droite)
+  const enemies = [];
+  for (let i=0;i<6;i++) enemies.push(spawnEnemy(30 + i*8, H-4));
+  // Projectiles lancés par les ennemis
+  const shurikens = [];
+
+  function spawnEnemy(tx, ty){
+    return { x: tx*TS, y: ty*TS, w: 20, h: 20, vx: (Math.random()<0.5?-40:40), vy:0, alive:true, skin: (Math.random()*4)|0, atkCd: 0.5 + Math.random()*1.2 };
+  }
+
+  function reset(){
+    player.x = (bases[0].x+bases[0].w/2)*TS; player.y = (bases[0].y-1)*TS;
+    player.vx = 0; player.vy = 0; player.onGround = false; player.dir = 1; player.lives = 3; player.shield = 0; player.inv = 0;
+    enemies.length = 0; for (let i=0;i<6;i++) enemies.push(spawnEnemy(30 + i*8, H-4));
+    shurikens.length = 0;
+    // réinitialise la progression (sauf base joueur)
+    for (let i=0;i<bases.length;i++) bases[i].progress = bases[i].locked ? 1 : 0;
+    status('');
+  }
+
+  function status(t){ onStatus && onStatus(t); }
+
+  function solidAt(tx, ty){
+    if (tx<0||ty<0||tx>=W||ty>=H) return 1; // mur
+    const v = level[idx(tx, ty)];
+    return v===1 || v===2 ? 1 : 0;
+  }
+
+  function aabbVsWorld(ent){
+    // déplacement X
+    ent.x += ent.vx * dt;
+    let x0 = Math.floor((ent.x)/TS), x1 = Math.floor((ent.x+ent.w)/TS);
+    let y0 = Math.floor((ent.y)/TS), y1 = Math.floor((ent.y+ent.h)/TS);
+    if (ent.vx>0){
+      for(let y=y0;y<=y1;y++) if (solidAt(x1, y)) { ent.x = x1*TS - ent.w - 0.01; ent.vx = 0; break; }
+    } else if (ent.vx<0){
+      for(let y=y0;y<=y1;y++) if (solidAt(x0, y)) { ent.x = (x0+1)*TS + 0.01; ent.vx = 0; break; }
+    }
+    // déplacement Y
+    ent.y += ent.vy * dt;
+    x0 = Math.floor((ent.x)/TS); x1 = Math.floor((ent.x+ent.w)/TS);
+    y0 = Math.floor((ent.y)/TS); y1 = Math.floor((ent.y+ent.h)/TS);
+    ent.onGround = false;
+    if (ent.vy>0){
+      for(let x=x0;x<=x1;x++) if (solidAt(x, y1)) { ent.y = y1*TS - ent.h - 0.01; ent.vy = 0; ent.onGround = true; break; }
+    } else if (ent.vy<0){
+      for(let x=x0;x<=x1;x++) if (solidAt(x, y0)) { ent.y = (y0+1)*TS + 0.01; ent.vy = 0; break; }
+    }
+  }
+
+  function overlaps(a,b){ return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y; }
+
+  let dt = 0.016;
+
+  // -------------------- Décor: Forêt en arrière-plan (parallaxe) --------------------
+  const WORLD_PX = W * TS;
+  function rng(seed){ let s = seed>>>0; return ()=> ((s = (s*1664525 + 1013904223)>>>0) / 4294967296); }
+  const rand = rng(1337);
+  // Couche montagnes
+  const peaksFar = Array.from({length: 10}, ()=>({ x: Math.floor(rand()*WORLD_PX), w: 240 + Math.floor(rand()*240), h: 120 + Math.floor(rand()*120) }));
+  const peaksMid = Array.from({length: 12}, ()=>({ x: Math.floor(rand()*WORLD_PX), w: 200 + Math.floor(rand()*200), h: 140 + Math.floor(rand()*160) }));
+  const farTrees = Array.from({length: 110}, ()=>({
+    x: Math.floor(rand()*WORLD_PX),
+    h: 40 + Math.floor(rand()*60),
+    s: 0.7 + rand()*0.6,
+  }));
