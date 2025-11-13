@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Voxel Clans MVP</title>
+    <style>
+      html, body { height: 100%; margin: 0; overflow: hidden; background: #0b0f14; }
+      #overlay { position: fixed; top: 0; left: 0; right: 0; color: #e6edf3; font: 14px/1.4 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; pointer-events: none; }
+      #topbar { display: flex; gap: 16px; padding: 8px 12px; background: linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.0)); align-items: center; }
+      #hud { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; pointer-events: auto; }
+      .slot { width: 36px; height: 36px; border-radius: 6px; border: 1px solid rgba(255,255,255,.18); display: grid; place-items: center; color: #111; font-weight: 700; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+      .slot.selected { outline: 2px solid #ffd166; }
+      .slot[data-id="1"] { background: #58a14f; }
+      .slot[data-id="2"] { background: #7a5d3d; }
+      .slot[data-id="3"] { background: #8d99ae; }
+      .slot[data-id="4"] { background: #caa574; }
+      #help { margin-left: auto; opacity: .85; }
+      #ui-panel { position: fixed; right: 12px; top: 56px; width: 300px; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 10px; pointer-events: auto; color: #e6edf3; }
+      #ui-panel h3 { margin: 6px 0 8px; font-size: 14px; }
+      #ui-panel label { display: block; margin: 6px 0; }
+      #ui-panel input[type="text"] { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.05); color: #e6edf3; }
+      #ui-panel input[type="color"] { width: 100%; height: 32px; border: none; padding: 0; background: transparent; }
+      #ui-panel button { width: 100%; padding: 8px; margin-top: 6px; background: #238636; color: white; border: 0; border-radius: 8px; cursor: pointer; }
+      #center-dot { position: fixed; top: 50%; left: 50%; width: 4px; height: 4px; background: #e6edf3; border-radius: 50%; transform: translate(-50%, -50%); opacity: .8; }
+      a { color: #6cb6ff; text-decoration: none; }
+    </style>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  </head>
+  <body>
+    <div id="overlay">
+      <div id="topbar">
+        <div id="title">Voxel Clans MVP</div>
+        <div id="status"></div>
+        <div id="help">Clic pour capturer la souris • ZQSD/ESDF ou WASD pour bouger • Souris pour regarder • Clic gauche: casser • Clic droit: placer • 1–4: bloc</div>
+      </div>
+    </div>
+    <div id="center-dot"></div>
+    <div id="hud"></div>
+    <div id="ui-panel"></div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+  </html>
+
